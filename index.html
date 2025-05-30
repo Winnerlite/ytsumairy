@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>YouTube Summarizer MVP</title>
+    <title>YouTube Summarizer</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -83,6 +83,17 @@
             font-size: 18px;
             color: #555;
         }
+        .api-status {
+            padding: 8px;
+            background: #f0f0f0;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-size: 14px;
+        }
+        .error-message {
+            color: #d32f2f;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
@@ -91,6 +102,9 @@
             <input type="text" id="searchInput" placeholder="Search YouTube videos...">
             <button onclick="searchVideos()">Search</button>
         </div>
+
+        <div class="api-status" id="apiStatus"></div>
+
         <div class="video-grid" id="videoGrid"></div>
         <div class="loading" id="loading">Loading summary...</div>
         <div class="summary" id="summary">
@@ -99,146 +113,135 @@
             <button onclick="copySummary()">Copy Summary</button>
         </div>
     </div>
+
     <script>
+        // YouTube Data API
         const YOUTUBE_API_KEY = 'AIzaSyAlbWmxyzhL2RaNPNlPsANzY7R0JZUj_TU';
-        const GEMINI_API_KEY = 'AIzaSyCt-Hu2WBkj0SBxaxVFckJFjkuHCBz9v_c';
         const YOUTUBE_API_URL = 'https://www.googleapis.com/youtube/v3';
+
+        // Gemini API for summarization
+        const GEMINI_API_KEY = 'AIzaSyCt-Hu2WBkj0SBxaxVFckJFjkuHCBz9v_c';
         const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
 
+        // Transcript API configurations (would normally be on server-side)
+        const API_PROVIDERS = [
+            {
+                name: "Primary Transcript API",
+                endpoint: (videoId) => `https://youtube-transcript3.p.rapidapi.com/api/transcript?videoId=${videoId}`,
+                headers: {
+                    'x-rapidapi-host': 'youtube-transcript3.p.rapidapi.com',
+                    'x-rapidapi-key': 'bbcd1df015mshcbfd8a8f912f109p1f68a0jsn8e1dca2c166d'
+                },
+                format: (data) => data.transcript.map(item => item.text).join(' ')
+            },
+            {
+                name: "Backup Transcript API",
+                endpoint: (videoId) => `https://youtube-captions-transcript-subtitles-video-combiner.p.rapidapi.com/download-all/${videoId}?format_subtitle=srt&format_answer=json`,
+                headers: {
+                    'x-rapidapi-host': 'youtube-captions-transcript-subtitles-video-combiner.p.rapidapi.com',
+                    'x-rapidapi-key': 'your-backup-api-key-here'
+                },
+                format: (data) => data.map(entry => entry.text).join(' ')
+            }
+        ];
+
+        let currentProviderIndex = 0;
+
+        async function getTranscript(videoId, retryCount = 0) {
+            const provider = API_PROVIDERS[currentProviderIndex];
+
+            try {
+                const response = await fetch(provider.endpoint(videoId), {
+                    method: 'GET',
+                    headers: provider.headers
+                });
+
+                if (response.status === 429) { // Rate limited
+                    throw new Error('API_LIMIT_REACHED');
+                }
+
+                if (!response.ok) {
+                    throw new Error(`API Error: ${response.status}`);
+                }
+
+                const data = await response.json();
+                return {
+                    text: provider.format(data),
+                    source: provider.name
+                };
+
+            } catch (error) {
+                console.error(`${provider.name} failed:`, error.message);
+
+                // Try next provider if available
+                if (retryCount < API_PROVIDERS.length - 1) {
+                    currentProviderIndex = (currentProviderIndex + 1) % API_PROVIDERS.length;
+                    return getTranscript(videoId, retryCount + 1);
+                }
+
+                throw new Error('All transcript services failed. Try another video.');
+            }
+        }
+
         async function searchVideos() {
-            const query = document.getElementById('searchInput').value;
+            const query = document.getElementById('searchInput').value.trim();
             if (!query) return alert('Please enter a search term');
 
             try {
-                console.log('Searching for:', query);
-                const response = await fetch(`${YOUTUBE_API_URL}/search?part=snippet&q=${encodeURIComponent(query)}&type=video&videoDuration=medium&maxResults=5&key=${YOUTUBE_API_KEY}`);
-                if (!response.ok) {
-                    if (response.status === 403) throw new Error('YouTube API quota exceeded or invalid key');
-                    throw new Error(`Failed to fetch videos: ${response.statusText}`);
-                }
-                const data = await response.json();
-                console.log('Search Results:', data.items);
-                displayVideos(data.items);
+                const response = await fetch(`${YOUTUBE_API_URL}/search?part=snippet&q=${encodeURIComponent(query)}&type=video&maxResults=5&key=${YOUTUBE_API_KEY}`);
+                if (!response.ok) throw new Error(response.statusText);
+                displayVideos((await response.json()).items);
             } catch (error) {
-                alert(`Search error: ${error.message}`);
-                console.error('Search Error:', error);
+                alert(`Search failed: ${error.message}`);
             }
         }
-
-
-        async function getTranscript(videoId) {
-    const RAPIDAPI_KEY = 'bbcd1df015mshcbfd8a8f912f109p1f68a0jsn8e1dca2c166d'; // Your RapidAPI key
-    const RAPIDAPI_HOST = 'youtube-transcript3.p.rapidapi.com';
-    const API_URL = 'https://youtube-transcript3.p.rapidapi.com/api/transcript';
-
-    try {
-        document.getElementById('loading').style.display = 'block';
-
-        const response = await fetch(`${API_URL}?videoId=${videoId}`, {
-            method: 'GET',
-            headers: {
-                'x-rapidapi-host': RAPIDAPI_HOST,
-                'x-rapidapi-key': RAPIDAPI_KEY
-            }
-        });
-
-        if (!response.ok) {
-            throw new Error(`API Error: ${response.status} - ${response.statusText}`);
-        }
-
-        const data = await response.json();
-
-        // Format the transcript into plain text
-        if (data && data.transcript) {
-            return data.transcript.map(item => item.text).join(' ');
-        } else {
-            throw new Error('No transcript available for this video');
-        }
-
-    } catch (error) {
-        console.error('Transcript Error:', error);
-        throw new Error(`Failed to get transcript: ${error.message}`);
-    }
-}
 
         function displayVideos(videos) {
-            const videoGrid = document.getElementById('videoGrid');
-            videoGrid.innerHTML = '';
-            videos.forEach(video => {
-                const videoCard = document.createElement('div');
-                videoCard.className = 'video-card';
-                videoCard.innerHTML = `
-                    <img src="${video.snippet.thumbnails.medium.url}" alt="${video.snippet.title}">
+            const grid = document.getElementById('videoGrid');
+            grid.innerHTML = videos.map(video => `
+                <div class="video-card" onclick="getTranscriptAndSummarize('${video.id.videoId}')">
+                    <img src="${video.snippet.thumbnails.medium.url}">
                     <h3>${video.snippet.title}</h3>
                     <p>${video.snippet.channelTitle}</p>
-                `;
-                videoCard.onclick = () => getTranscriptAndSummarize(video.id.videoId);
-                videoGrid.appendChild(videoCard);
-            });
+                </div>
+            `).join('');
         }
 
-       async function getTranscriptAndSummarize(videoId) {
-    try {
-        document.getElementById('loading').style.display = 'block';
-        document.getElementById('summary').style.display = 'none';
+        async function getTranscriptAndSummarize(videoId) {
+            try {
+                document.getElementById('loading').style.display = 'block';
+                document.getElementById('summary').style.display = 'none';
 
-        // Get transcript using RapidAPI
-        const transcript = await getTranscript(videoId);
-        console.log('Transcript:', transcript);
+                const { text: transcript, source } = await getTranscript(videoId);
+                document.getElementById('apiStatus').textContent = `Using: ${source}`;
 
-        if (!transcript || transcript.length < 50) {
-            throw new Error('Transcript too short or unavailable');
-        }
+                const summary = await fetch(GEMINI_API_URL + `?key=${GEMINI_API_KEY}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{
+                            parts: [{ text: `Summarize in 3-5 bullet points:\n${transcript.substring(0, 30000)}` }]
+                        }]
+                    })
+                });
 
-        // Summarize with Gemini
-        const summaryResponse = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                contents: [{
-                    parts: [{
-                        text: `Summarize this YouTube video transcript in 3-5 key points:\n${transcript.substring(0, 30000)}`
-                    }]
-                }]
-            })
-        });
+                document.getElementById('summaryText').innerText =
+                    (await summary.json()).candidates[0].content.parts[0].text;
+                document.getElementById('summary').style.display = 'block';
 
-        if (!summaryResponse.ok) {
-            throw new Error('Failed to generate summary');
-        }
-
-        const summaryData = await summaryResponse.json();
-        const summaryText = summaryData.candidates[0].content.parts[0].text;
-
-        document.getElementById('summaryText').innerText = summaryText;
-        document.getElementById('summary').style.display = 'block';
-
-    } catch (error) {
-        document.getElementById('summaryText').innerHTML = `
-            <p style="color: #d32f2f;">⚠️ ${error.message}</p>
-            <p>This video may not have captions available, or there was an API error.</p>
-        `;
-        document.getElementById('summary').style.display = 'block';
-    } finally {
-        document.getElementById('loading').style.display = 'none';
-    }
-}
-
-        function cleanTranscriptText(transcript) {
-            return transcript
-                .split('\n')
-                .filter(line => !line.startsWith('WEBVTT') && !line.match(/^\d+$/) && !line.includes('-->') && !line.match(/\[.*\]/) && line.trim() !== '')
-                .join(' ')
-                .trim();
+            } catch (error) {
+                document.getElementById('summaryText').innerHTML =
+                    `<p class="error-message">Error: ${error.message}</p>`;
+                document.getElementById('summary').style.display = 'block';
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+            }
         }
 
         function copySummary() {
-            const summaryText = document.getElementById('summaryText').innerText;
-            navigator.clipboard.writeText(summaryText).then(() => {
-                alert('Summary copied to clipboard!');
-            }).catch(err => {
-                alert('Failed to copy summary');
-            });
+            navigator.clipboard.writeText(
+                document.getElementById('summaryText').innerText
+            ).then(() => alert('Copied!'));
         }
     </script>
 </body>
