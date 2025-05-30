@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Summarizer MVP</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .search-bar {
+            display: flex;
+            margin-bottom: 20px;
+        }
+        .search-bar input {
+            flex: 1;
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 4px 0 0 4px;
+        }
+        .search-bar button {
+            padding: 10px 20px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-left: none;
+            background-color: #4CAF50;
+            color: white;
+            border-radius: 0 4px 4px 0;
+            cursor: pointer;
+        }
+        .video-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+        }
+        .video-card {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            padding: 10px;
+            cursor: pointer;
+        }
+        .video-card img {
+            width: 100%;
+            border-radius: 4px;
+        }
+        .video-card h3 {
+            font-size: 16px;
+            margin: 10px 0;
+        }
+        .video-card p {
+            font-size: 14px;
+            color: #555;
+            margin: 0;
+        }
+        .summary {
+            margin-top: 20px;
+            padding: 20px;
+            background-color: white;
+            border-radius: 8px;
+            display: none;
+        }
+        .summary button {
+            padding: 8px 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            margin-top: 20px;
+            font-size: 18px;
+            color: #555;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="search-bar">
+            <input type="text" id="searchInput" placeholder="Search YouTube videos...">
+            <button onclick="searchVideos()">Search</button>
+        </div>
+        <div class="video-grid" id="videoGrid"></div>
+        <div class="loading" id="loading">Loading summary...</div>
+        <div class="summary" id="summary">
+            <h2>Video Summary</h2>
+            <p id="summaryText"></p>
+            <button onclick="copySummary()">Copy Summary</button>
+        </div>
+    </div>
+    <script>
+        const YOUTUBE_API_KEY = 'AIzaSyAlbWmxyzhL2RaNPNlPsANzY7R0JZUj_TU';
+        const GEMINI_API_KEY = 'AIzaSyCt-Hu2WBkj0SBxaxVFckJFjkuHCBz9v_c';
+        const YOUTUBE_API_URL = 'https://www.googleapis.com/youtube/v3';
+        const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+
+        async function searchVideos() {
+            const query = document.getElementById('searchInput').value;
+            if (!query) return alert('Please enter a search term');
+
+            try {
+                console.log('Searching for:', query);
+                const response = await fetch(`${YOUTUBE_API_URL}/search?part=snippet&q=${encodeURIComponent(query)}&type=video&videoDuration=medium&maxResults=5&key=${YOUTUBE_API_KEY}`);
+                if (!response.ok) {
+                    if (response.status === 403) throw new Error('YouTube API quota exceeded or invalid key');
+                    throw new Error(`Failed to fetch videos: ${response.statusText}`);
+                }
+                const data = await response.json();
+                console.log('Search Results:', data.items);
+                displayVideos(data.items);
+            } catch (error) {
+                alert(`Search error: ${error.message}`);
+                console.error('Search Error:', error);
+            }
+        }
+
+
+        async function getTranscript(videoId) {
+    const RAPIDAPI_KEY = 'bbcd1df015mshcbfd8a8f912f109p1f68a0jsn8e1dca2c166d'; // Your RapidAPI key
+    const RAPIDAPI_HOST = 'youtube-transcript3.p.rapidapi.com';
+    const API_URL = 'https://youtube-transcript3.p.rapidapi.com/api/transcript';
+
+    try {
+        document.getElementById('loading').style.display = 'block';
+
+        const response = await fetch(`${API_URL}?videoId=${videoId}`, {
+            method: 'GET',
+            headers: {
+                'x-rapidapi-host': RAPIDAPI_HOST,
+                'x-rapidapi-key': RAPIDAPI_KEY
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`API Error: ${response.status} - ${response.statusText}`);
+        }
+
+        const data = await response.json();
+
+        // Format the transcript into plain text
+        if (data && data.transcript) {
+            return data.transcript.map(item => item.text).join(' ');
+        } else {
+            throw new Error('No transcript available for this video');
+        }
+
+    } catch (error) {
+        console.error('Transcript Error:', error);
+        throw new Error(`Failed to get transcript: ${error.message}`);
+    }
+}
+
+        function displayVideos(videos) {
+            const videoGrid = document.getElementById('videoGrid');
+            videoGrid.innerHTML = '';
+            videos.forEach(video => {
+                const videoCard = document.createElement('div');
+                videoCard.className = 'video-card';
+                videoCard.innerHTML = `
+                    <img src="${video.snippet.thumbnails.medium.url}" alt="${video.snippet.title}">
+                    <h3>${video.snippet.title}</h3>
+                    <p>${video.snippet.channelTitle}</p>
+                `;
+                videoCard.onclick = () => getTranscriptAndSummarize(video.id.videoId);
+                videoGrid.appendChild(videoCard);
+            });
+        }
+
+       async function getTranscriptAndSummarize(videoId) {
+    try {
+        document.getElementById('loading').style.display = 'block';
+        document.getElementById('summary').style.display = 'none';
+
+        // Get transcript using RapidAPI
+        const transcript = await getTranscript(videoId);
+        console.log('Transcript:', transcript);
+
+        if (!transcript || transcript.length < 50) {
+            throw new Error('Transcript too short or unavailable');
+        }
+
+        // Summarize with Gemini
+        const summaryResponse = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contents: [{
+                    parts: [{
+                        text: `Summarize this YouTube video transcript in 3-5 key points:\n${transcript.substring(0, 30000)}`
+                    }]
+                }]
+            })
+        });
+
+        if (!summaryResponse.ok) {
+            throw new Error('Failed to generate summary');
+        }
+
+        const summaryData = await summaryResponse.json();
+        const summaryText = summaryData.candidates[0].content.parts[0].text;
+
+        document.getElementById('summaryText').innerText = summaryText;
+        document.getElementById('summary').style.display = 'block';
+
+    } catch (error) {
+        document.getElementById('summaryText').innerHTML = `
+            <p style="color: #d32f2f;">⚠️ ${error.message}</p>
+            <p>This video may not have captions available, or there was an API error.</p>
+        `;
+        document.getElementById('summary').style.display = 'block';
+    } finally {
+        document.getElementById('loading').style.display = 'none';
+    }
+}
+
+        function cleanTranscriptText(transcript) {
+            return transcript
+                .split('\n')
+                .filter(line => !line.startsWith('WEBVTT') && !line.match(/^\d+$/) && !line.includes('-->') && !line.match(/\[.*\]/) && line.trim() !== '')
+                .join(' ')
+                .trim();
+        }
+
+        function copySummary() {
+            const summaryText = document.getElementById('summaryText').innerText;
+            navigator.clipboard.writeText(summaryText).then(() => {
+                alert('Summary copied to clipboard!');
+            }).catch(err => {
+                alert('Failed to copy summary');
+            });
+        }
+    </script>
+</body>
+</html>
