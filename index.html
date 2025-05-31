@@ -3,246 +3,725 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>YouTube Summarizer</title>
+    <title>YT Summarizer</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        body {
-            font-family: Arial, sans-serif;
+        :root {
+            --primary: #ff0000;
+            --dark: #0f0f0f;
+            --darker: #030303;
+            --light: #f1f1f1;
+            --gray: #272727;
+            --transition: all 0.3s ease;
+        }
+        
+        * {
             margin: 0;
-            padding: 20px;
-            background-color: #f4f4f4;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Roboto', Arial, sans-serif;
         }
+        
+        body {
+            background-color: var(--dark);
+            color: var(--light);
+            min-height: 100vh;
+            padding-bottom: 80px; /* Space for bottom nav */
+        }
+        
+        /* Bottom Navigation */
+        .bottom-nav {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: var(--darker);
+            padding: 0.8rem 1.5rem;
+            border-radius: 50px;
+            display: flex;
+            gap: 1.5rem;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            z-index: 100;
+            border: 1px solid var(--gray);
+        }
+        
+        .nav-btn {
+            background: none;
+            border: none;
+            color: var(--light);
+            font-size: 1.2rem;
+            cursor: pointer;
+            padding: 0.5rem;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition);
+        }
+        
+        .nav-btn.active {
+            color: var(--primary);
+            background-color: rgba(255, 0, 0, 0.1);
+        }
+        
+        .nav-btn:hover {
+            background-color: var(--gray);
+        }
+        
+        /* Main Content */
         .container {
-            max-width: 1200px;
-            margin: 0 auto;
+            max-width: 100%;
+            padding: 1.5rem;
         }
+        
+        /* Search Page */
+        .search-page {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 80vh;
+            text-align: center;
+        }
+        
+        .logo {
+            font-size: 2.5rem;
+            color: var(--primary);
+            margin-bottom: 1.5rem;
+        }
+        
+        .search-container {
+            width: 100%;
+            max-width: 600px;
+            margin: 2rem 0;
+        }
+        
         .search-bar {
             display: flex;
-            margin-bottom: 20px;
+            width: 100%;
         }
+        
         .search-bar input {
             flex: 1;
-            padding: 10px;
-            font-size: 16px;
-            border: 1px solid #ccc;
-            border-radius: 4px 0 0 4px;
+            padding: 1rem 1.5rem;
+            font-size: 1.1rem;
+            border: 2px solid var(--gray);
+            border-radius: 30px 0 0 30px;
+            background-color: var(--darker);
+            color: var(--light);
+            outline: none;
         }
+        
         .search-bar button {
-            padding: 10px 20px;
-            font-size: 16px;
-            border: 1px solid #ccc;
-            border-left: none;
-            background-color: #4CAF50;
+            padding: 0 1.8rem;
+            font-size: 1.1rem;
+            border: none;
+            background-color: var(--primary);
             color: white;
-            border-radius: 0 4px 4px 0;
+            border-radius: 0 30px 30px 0;
             cursor: pointer;
+            transition: var(--transition);
         }
+        
+        .search-bar button:hover {
+            background-color: #cc0000;
+        }
+        
+        .disclaimer {
+            margin-top: 1rem;
+            color: #aaa;
+            font-size: 0.9rem;
+        }
+        
+        /* Results Page */
+        .results-page {
+            display: none;
+            padding: 1rem 0;
+        }
+        
+        .back-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--primary);
+            background: none;
+            border: none;
+            cursor: pointer;
+            margin-bottom: 1.5rem;
+            font-size: 1rem;
+        }
+        
         .video-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-            gap: 20px;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1.5rem;
         }
+        
         .video-card {
-            background-color: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-            padding: 10px;
+            background-color: var(--darker);
+            border-radius: 12px;
+            overflow: hidden;
             cursor: pointer;
+            transition: var(--transition);
         }
-        .video-card img {
+        
+        .video-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .video-thumbnail {
+            position: relative;
             width: 100%;
-            border-radius: 4px;
+            padding-top: 56.25%;
+            overflow: hidden;
         }
-        .video-card h3 {
-            font-size: 16px;
-            margin: 10px 0;
+        
+        .video-thumbnail img {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
         }
-        .video-card p {
-            font-size: 14px;
-            color: #555;
-            margin: 0;
+        
+        .video-info {
+            padding: 1rem;
         }
-        .summary {
-            margin-top: 20px;
-            padding: 20px;
-            background-color: white;
-            border-radius: 8px;
+        
+        .video-title {
+            font-size: 1rem;
+            margin-bottom: 0.5rem;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        
+        .video-channel {
+            font-size: 0.9rem;
+            color: #aaa;
+        }
+        
+        /* Video Page */
+        .video-page {
             display: none;
+            padding: 1rem 0;
         }
-        .summary button {
-            padding: 8px 16px;
-            background-color: #4CAF50;
+        
+        .video-player-container {
+            position: relative;
+            width: 100%;
+            padding-top: 56.25%;
+            margin-bottom: 1.5rem;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        
+        .video-player {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+        
+        .summary-container {
+            background-color: var(--darker);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-top: 1.5rem;
+        }
+        
+        .summary-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+        
+        .summary-title {
+            font-size: 1.3rem;
+            color: var(--primary);
+        }
+        
+        .copy-btn {
+            background-color: var(--primary);
             color: white;
             border: none;
-            border-radius: 4px;
+            padding: 0.5rem 1.2rem;
+            border-radius: 20px;
             cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.9rem;
         }
+        
+        .summary-content {
+            line-height: 1.6;
+        }
+        
+        .summary-content ul {
+            padding-left: 1.2rem;
+        }
+        
+        .summary-content li {
+            margin-bottom: 0.8rem;
+            position: relative;
+        }
+        
+        .summary-content li:before {
+            content: "•";
+            color: var(--primary);
+            font-weight: bold;
+            display: inline-block;
+            width: 1em;
+            margin-left: -1em;
+        }
+        
+        /* Loading */
         .loading {
             display: none;
             text-align: center;
-            margin-top: 20px;
-            font-size: 18px;
-            color: #555;
+            padding: 2rem;
+            font-size: 1.1rem;
+            color: #aaa;
         }
-        .api-status {
-            padding: 8px;
-            background: #f0f0f0;
-            border-radius: 4px;
-            margin: 10px 0;
-            font-size: 14px;
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .video-grid {
+                grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            }
+            
+            .bottom-nav {
+                gap: 1rem;
+                padding: 0.7rem 1.2rem;
+            }
+            
+            .nav-btn {
+                font-size: 1.1rem;
+                width: 36px;
+                height: 36px;
+            }
         }
-        .error-message {
-            color: #d32f2f;
-            font-weight: bold;
-        }
+        
+        .summary-content h3 {
+    color: var(--primary);
+    margin-bottom: 1rem;
+    font-size: 1.4rem;
+}
+
+.summary-content p {
+    margin-bottom: 0.8rem;
+    line-height: 1.6;
+}
+
+.summary-content strong {
+    color: var(--primary);
+    margin-right: 0.5rem;
+}
+
+.error {
+    color: #ff6b6b;
+}
     </style>
 </head>
 <body>
+    <!-- Main Container -->
     <div class="container">
-        <div class="search-bar">
-            <input type="text" id="searchInput" placeholder="Search YouTube videos...">
-            <button onclick="searchVideos()">Search</button>
+        <!-- Search Page -->
+        <div class="search-page" id="searchPage">
+            <div class="logo">
+                <i class="fab fa-youtube"></i>
+            </div>
+            <h1>YouTube Summarizer</h1>
+            <p>Get instant AI summaries of any YouTube video</p>
+            
+            <div class="search-container">
+                <div class="search-bar">
+                    <input type="text" id="searchInput" placeholder="Search YouTube videos...">
+                    <button onclick="searchVideos()"><i class="fas fa-search"></i></button>
+                </div>
+                <p class="disclaimer">Videos watched cannot be saved for your privacy</p>
+            </div>
         </div>
-
-        <div class="api-status" id="apiStatus"></div>
-
-        <div class="video-grid" id="videoGrid"></div>
-        <div class="loading" id="loading">Loading summary...</div>
-        <div class="summary" id="summary">
-            <h2>Video Summary</h2>
-            <p id="summaryText"></p>
-            <button onclick="copySummary()">Copy Summary</button>
+        
+        <!-- Results Page -->
+        <div class="results-page" id="resultsPage">
+            <button class="back-btn" onclick="goBackToSearch()">
+                <i class="fas fa-arrow-left"></i> Back to search
+            </button>
+            
+            <div class="video-grid" id="videoGrid">
+                <!-- Videos will be loaded here -->
+            </div>
         </div>
+        
+        <!-- Video Page -->
+        <div class="video-page" id="videoPage">
+            <button class="back-btn" onclick="goBackToResults()">
+                <i class="fas fa-arrow-left"></i> Back to results
+            </button>
+            
+            <div class="video-player-container">
+                <iframe class="video-player" id="videoPlayer" frameborder="0" allowfullscreen></iframe>
+            </div>
+            
+            <div class="summary-container">
+                <div class="summary-header">
+                    <h2 class="summary-title">AI Summary</h2>
+                    <button class="copy-btn" onclick="copySummary()">
+                        <i class="far fa-copy"></i> Copy
+                    </button>
+                </div>
+                <div class="summary-content" id="summaryContent"></div>
+            </div>
+        </div>
+        
+        <!-- Loading Indicator -->
+        <div class="loading" id="loading">
+            <i class="fas fa-spinner fa-spin"></i> Loading...
+        </div>
+    </div>
+    
+    <!-- Bottom Navigation -->
+    <div class="bottom-nav">
+        <button class="nav-btn active" id="searchNavBtn">
+            <i class="fas fa-search"></i>
+        </button>
+        <button class="nav-btn" id="savedNavBtn">
+            <i class="fas fa-bookmark"></i>
+        </button>
+        <button class="nav-btn" id="historyNavBtn">
+            <i class="fas fa-history"></i>
+        </button>
     </div>
 
     <script>
-        // YouTube Data API
+        // API Configuration
         const YOUTUBE_API_KEY = 'AIzaSyAlbWmxyzhL2RaNPNlPsANzY7R0JZUj_TU';
-        const YOUTUBE_API_URL = 'https://www.googleapis.com/youtube/v3';
-
-        // Gemini API for summarization
         const GEMINI_API_KEY = 'AIzaSyCt-Hu2WBkj0SBxaxVFckJFjkuHCBz9v_c';
+        const YOUTUBE_API_URL = 'https://www.googleapis.com/youtube/v3';
         const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+        
+       
 
-        // Transcript API configurations (would normally be on server-side)
+        // RapidAPI Providers
         const API_PROVIDERS = [
-            {
-                name: "Primary Transcript API",
-                endpoint: (videoId) => `https://youtube-transcript3.p.rapidapi.com/api/transcript?videoId=${videoId}`,
-                headers: {
-                    'x-rapidapi-host': 'youtube-transcript3.p.rapidapi.com',
-                    'x-rapidapi-key': 'bbcd1df015mshcbfd8a8f912f109p1f68a0jsn8e1dca2c166d'
-                },
-                format: (data) => data.transcript.map(item => item.text).join(' ')
-            },
-            {
-                name: "Backup Transcript API",
-                endpoint: (videoId) => `https://youtube-captions-transcript-subtitles-video-combiner.p.rapidapi.com/download-all/${videoId}?format_subtitle=srt&format_answer=json`,
-                headers: {
-                    'x-rapidapi-host': 'youtube-captions-transcript-subtitles-video-combiner.p.rapidapi.com',
-                    'x-rapidapi-key': 'your-backup-api-key-here'
-                },
-                format: (data) => data.map(entry => entry.text).join(' ')
-            }
-        ];
+  {
+    name: "Transcript3",
+    // Use EXACT same endpoint as working version
+    endpoint: (videoId) => `https://youtube-transcript3.p.rapidapi.com/api/transcript?videoId=${videoId}`,
+    headers: {
+      'x-rapidapi-host': 'youtube-transcript3.p.rapidapi.com',
+      'x-rapidapi-key': 'bbcd1df015mshcbfd8a8f912f109p1f68a0jsn8e1dca2c166d' // Your working key
+    },
+    format: (data) => data.transcript?.map(item => item.text).join(' ') || ''
+  },
+  {
+    name: "CaptionsCombiner", 
+    endpoint: (videoId) => `https://youtube-captions-transcript-subtitles-video-combiner.p.rapidapi.com/download-all/${videoId}?format_subtitle=srt&format_answer=json`,
+    headers: {
+      'x-rapidapi-host': 'youtube-captions-transcript-subtitles-video-combiner.p.rapidapi.com',
+      'x-rapidapi-key': 'your-backup-api-key-here' // Replace if needed
+    },
+    format: (data) => Array.isArray(data) ? data.map(entry => entry.text).join(' ') : ''
+  }
+];
 
         let currentProviderIndex = 0;
+        let currentVideoId = '';
+        let currentVideos = [];
 
-        async function getTranscript(videoId, retryCount = 0) {
-            const provider = API_PROVIDERS[currentProviderIndex];
+        // DOM Elements
+        const searchPage = document.getElementById('searchPage');
+        const resultsPage = document.getElementById('resultsPage');
+        const videoPage = document.getElementById('videoPage');
+        const videoGrid = document.getElementById('videoGrid');
+        const videoPlayer = document.getElementById('videoPlayer');
+        const summaryContent = document.getElementById('summaryContent');
+        const loading = document.getElementById('loading');
+        const searchInput = document.getElementById('searchInput');
+        
+        // Navigation Elements
+        const searchNavBtn = document.getElementById('searchNavBtn');
+        const savedNavBtn = document.getElementById('savedNavBtn');
+        const historyNavBtn = document.getElementById('historyNavBtn');
 
-            try {
-                const response = await fetch(provider.endpoint(videoId), {
-                    method: 'GET',
-                    headers: provider.headers
-                });
+        // Navigation Events
+        searchNavBtn.addEventListener('click', () => {
+            setActivePage('search');
+            goBackToSearch();
+        });
 
-                if (response.status === 429) { // Rate limited
-                    throw new Error('API_LIMIT_REACHED');
-                }
+        savedNavBtn.addEventListener('click', () => {
+            setActivePage('saved');
+            // In a full implementation, you would show saved summaries here
+            alert('Saved summaries feature would be implemented here');
+        });
 
-                if (!response.ok) {
-                    throw new Error(`API Error: ${response.status}`);
-                }
+        historyNavBtn.addEventListener('click', () => {
+            setActivePage('history');
+            // In a full implementation, you would show history here
+            alert('View history feature would be implemented here');
+        });
 
-                const data = await response.json();
-                return {
-                    text: provider.format(data),
-                    source: provider.name
-                };
-
-            } catch (error) {
-                console.error(`${provider.name} failed:`, error.message);
-
-                // Try next provider if available
-                if (retryCount < API_PROVIDERS.length - 1) {
-                    currentProviderIndex = (currentProviderIndex + 1) % API_PROVIDERS.length;
-                    return getTranscript(videoId, retryCount + 1);
-                }
-
-                throw new Error('All transcript services failed. Try another video.');
-            }
+        function setActivePage(page) {
+            // Reset all buttons
+            searchNavBtn.classList.remove('active');
+            savedNavBtn.classList.remove('active');
+            historyNavBtn.classList.remove('active');
+            
+            // Activate the selected button
+            if (page === 'search') searchNavBtn.classList.add('active');
+            if (page === 'saved') savedNavBtn.classList.add('active');
+            if (page === 'history') historyNavBtn.classList.add('active');
         }
 
+        // Search Videos
         async function searchVideos() {
-            const query = document.getElementById('searchInput').value.trim();
-            if (!query) return alert('Please enter a search term');
-
+            const query = searchInput.value.trim();
+            if (!query) return;
+            
+            loading.style.display = 'block';
+            searchPage.style.display = 'none';
+            resultsPage.style.display = 'block';
+            videoPage.style.display = 'none';
+            
             try {
-                const response = await fetch(`${YOUTUBE_API_URL}/search?part=snippet&q=${encodeURIComponent(query)}&type=video&maxResults=5&key=${YOUTUBE_API_KEY}`);
-                if (!response.ok) throw new Error(response.statusText);
-                displayVideos((await response.json()).items);
+                const response = await fetch(
+                    `${YOUTUBE_API_URL}/search?part=snippet&q=${encodeURIComponent(query)}&type=video&maxResults=50&key=${YOUTUBE_API_KEY}`
+                );
+                
+                if (!response.ok) throw new Error('Failed to fetch videos');
+                
+                const data = await response.json();
+                currentVideos = data.items;
+                displayVideos(currentVideos);
+                
             } catch (error) {
-                alert(`Search failed: ${error.message}`);
-            }
-        }
-
-        function displayVideos(videos) {
-            const grid = document.getElementById('videoGrid');
-            grid.innerHTML = videos.map(video => `
-                <div class="video-card" onclick="getTranscriptAndSummarize('${video.id.videoId}')">
-                    <img src="${video.snippet.thumbnails.medium.url}">
-                    <h3>${video.snippet.title}</h3>
-                    <p>${video.snippet.channelTitle}</p>
-                </div>
-            `).join('');
-        }
-
-        async function getTranscriptAndSummarize(videoId) {
-            try {
-                document.getElementById('loading').style.display = 'block';
-                document.getElementById('summary').style.display = 'none';
-
-                const { text: transcript, source } = await getTranscript(videoId);
-                document.getElementById('apiStatus').textContent = `Using: ${source}`;
-
-                const summary = await fetch(GEMINI_API_URL + `?key=${GEMINI_API_KEY}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        contents: [{
-                            parts: [{ text: `Summarize in 3-5 bullet points:\n${transcript.substring(0, 30000)}` }]
-                        }]
-                    })
-                });
-
-                document.getElementById('summaryText').innerText =
-                    (await summary.json()).candidates[0].content.parts[0].text;
-                document.getElementById('summary').style.display = 'block';
-
-            } catch (error) {
-                document.getElementById('summaryText').innerHTML =
-                    `<p class="error-message">Error: ${error.message}</p>`;
-                document.getElementById('summary').style.display = 'block';
+                alert(`Error: ${error.message}`);
+                goBackToSearch();
             } finally {
-                document.getElementById('loading').style.display = 'none';
+                loading.style.display = 'none';
             }
         }
 
-        function copySummary() {
-            navigator.clipboard.writeText(
-                document.getElementById('summaryText').innerText
-            ).then(() => alert('Copied!'));
+        // Display Videos
+        function displayVideos(videos) {
+            videoGrid.innerHTML = '';
+            
+            videos.forEach(video => {
+                const videoCard = document.createElement('div');
+                videoCard.className = 'video-card';
+                videoCard.innerHTML = `
+                    <div class="video-thumbnail">
+                        <img src="${video.snippet.thumbnails.medium.url}" alt="${video.snippet.title}">
+                    </div>
+                    <div class="video-info">
+                        <h3 class="video-title">${video.snippet.title}</h3>
+                        <p class="video-channel">${video.snippet.channelTitle}</p>
+                    </div>
+                `;
+                videoCard.addEventListener('click', () => showVideoPage(video.id.videoId));
+                videoGrid.appendChild(videoCard);
+            });
         }
+
+        // Show Video Page
+        async function showVideoPage(videoId) {
+  if (!videoId) {
+    console.error("No videoId provided!");
+    return;
+  }
+
+  console.log("Opening video:", videoId); // Debug
+  
+  try {
+    // 1. Show loading state
+    document.getElementById('loading').style.display = 'block';
+    
+    // 2. Hide other pages
+    document.getElementById('resultsPage').style.display = 'none';
+    
+    // 3. Show video container
+    const videoPage = document.getElementById('videoPage');
+    videoPage.style.display = 'block';
+    
+    // 4. Set up YouTube player
+    const player = document.getElementById('videoPlayer');
+    player.src = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
+    
+    // 5. Get transcript and summary
+    const { text: transcript } = await getTranscript(videoId);
+    const summary = await generateSummary(transcript);
+    
+    // 6. Display summary
+    document.getElementById('summaryContent').innerHTML = summary;
+    
+  } catch (error) {
+    console.error("Video page error:", error);
+    document.getElementById('summaryContent').innerHTML = `
+      <p class="error">Error loading video: ${error.message}</p>
+    `;
+  } finally {
+    document.getElementById('loading').style.display = 'none';
+  }
+}
+
+        // Get Transcript from API
+        async function getTranscript(videoId, retryCount = 0) {
+  const provider = API_PROVIDERS[currentProviderIndex];
+  
+  try {
+    console.log(`Attempting with ${provider.name}...`); // Debug log
+    
+    const response = await fetch(provider.endpoint(videoId), {
+      method: 'GET',
+      headers: provider.headers // Ensure headers are passed exactly
+    });
+
+    // Debug response
+    console.log(`Response status: ${response.status}`);
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => null);
+      console.error('API Error details:', errorData);
+      throw new Error(`API Error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log('API Response:', data); // Debug raw response
+    
+    if (!data) throw new Error("Empty response from API");
+    
+    return {
+      text: provider.format(data),
+      source: provider.name
+    };
+
+  } catch (error) {
+    console.error(`${provider.name} failed:`, error.message);
+    
+    if (retryCount < API_PROVIDERS.length - 1) {
+      currentProviderIndex = (currentProviderIndex + 1) % API_PROVIDERS.length;
+      return getTranscript(videoId, retryCount + 1);
+    }
+    
+    throw new Error(`All providers failed. Last error: ${error.message}`);
+  }
+}
+
+        // Generate Summary with Gemini
+        async function generateSummary(transcript) {
+    try {
+        const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contents: [{
+                    parts: [{
+                        text: `Provide a detailed 10-point summary of this video transcript. 
+                               Format as follows:
+                               
+                               [Title]: [Brief title describing main theme]
+                               
+                               1. First key point (full sentence)
+                               2. Second key point (full sentence)
+                               ...
+                               10. Tenth key point
+                               
+                               Remove all asterisks and special formatting characters.
+                               Focus on clear, complete sentences.
+                               \n\n${transcript.substring(0, 30000)}`
+                    }]
+                }]
+            })
+        });
+        
+        if (!response.ok) throw new Error('AI failed to generate summary');
+        
+        const data = await response.json();
+        return formatSummary(data.candidates[0].content.parts[0].text);
+        
+    } catch (error) {
+        console.error('Summary generation error:', error);
+        throw error;
+    }
+}
+
+
+function formatSummary(rawText) {
+    // Remove all asterisks and other markdown
+    let cleanText = rawText.replace(/\*\*/g, '')
+                          .replace(/\*/g, '')
+                          .replace(/```/g, '');
+    
+    // Extract title if present
+    const titleMatch = cleanText.match(/^(.*?):/);
+    const title = titleMatch ? titleMatch[1] : "Video Summary";
+    
+    // Format points as paragraphs
+    const points = cleanText.split('\n')
+        .filter(line => line.match(/^\d+\./))
+        .map(point => point.replace(/^\d+\./, '').trim());
+    
+    // Build HTML structure
+    let html = `<h3>${title}</h3>`;
+    points.forEach(point => {
+        html += `<p><strong>•</strong> ${point}</p>`;
+    });
+    
+    return html;
+}
+
+
+        // Navigation Functions
+        function goBackToSearch() {
+            searchPage.style.display = 'flex';
+            resultsPage.style.display = 'none';
+            videoPage.style.display = 'none';
+            videoPlayer.src = '';
+        }
+
+        function goBackToResults() {
+            resultsPage.style.display = 'block';
+            videoPage.style.display = 'none';
+            videoPlayer.src = '';
+        }
+
+        // Copy Summary
+        function copySummary() {
+            const textToCopy = summaryContent.innerText;
+            navigator.clipboard.writeText(textToCopy)
+                .then(() => {
+                    const copyBtn = document.querySelector('.copy-btn');
+                    copyBtn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+                    setTimeout(() => {
+                        copyBtn.innerHTML = '<i class="far fa-copy"></i> Copy';
+                    }, 2000);
+                })
+                .catch(err => {
+                    console.error('Failed to copy: ', err);
+                });
+        }
+
+
+
+        // Initialize
+        function init() {
+            setActivePage('search');
+            searchInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') searchVideos();
+            });
+        }
+
+        // Run initialization
+        init();
     </script>
 </body>
 </html>
